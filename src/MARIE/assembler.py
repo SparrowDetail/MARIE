@@ -37,11 +37,8 @@ class Assembler:
 
         Independently generates a Memory object and interprets a passed Marie assembly file into that memory object.
         This simulates a low-level programs assembly for CPU execution.
-
-        Examples:
     '''
     def __init__(self):
-        
         self.memory = Memory()
         self.address_book = {} # keeps track of specified addresses
         self.instruction_set = instruction_set
@@ -50,75 +47,78 @@ class Assembler:
     
     def __getOperatingLine(self) -> str:
         return f'{self._itr + 1 + self._readOffset}'
-        
-    def __nonBlank(self, file):
-        '''
-        Generator function used to return non-blank lines within a read file
-        '''
-        for line in file:
-            read = line.strip().upper()
-            read = read[:read.find('/')] if '/' in read else read
-            if read:
-                yield read
-            else:
-                self._readOffset += 1
     
+    def __addressingScan(self, file):
+        '''
+        Scan operation used to build an address book for the Marie program interpreter and check for keyword errors.
+
+        Args:
+            file: opened file being scanned (!Error handling managed by calling function)
+
+        Raises:
+            MarieAssemblyError: if addressing or keyword errors exist
+        '''
+        self._itr = 0
+        for line in file:
+            read = line.upper()
+            read = read[:read.find('/')] if '/' in read else read
+
+            #Skip empty lines
+            if not read.strip():
+                self._readOffset += 1
+                continue
+
+            #Read and store address name, if one exists
+            if ',' in read:
+                addressMarkerIndex = read.find(',')
+                address = read[:addressMarkerIndex]
+                self.address_book[address.strip()] = self._itr
+                read = read[addressMarkerIndex:]
+
+            #Ensure keyword is present in line, otherwise raise MarieAssemblyError
+            components = read.split()
+            if not any(kw in components for kw in keyWords):
+                raise MarieAssemblyError(f'keyword missing exception at line {self.__getOperatingLine()}')
+
+            self._itr += 1
+
     def __readComponents(self, file):
         '''
         Generator function used to iterate a passed file and yield component lists formatted for MARIE command interpretation.
         '''
         for line in file:
-            read = line.strip().upper()
-            read = re.sub(r'[ \t]+','',read) #cleans line of spaces and tabs should they exist
+            read = line.upper()
             read = read[:read.find('/')] if '/' in read else read
-            if read:
-                read = read.split(',')[1] if ',' in read else read
-                
-                #Read line left to right
-                out = []
-                r = ''
-                while read:
-                    r += read[0]
-                    read = read[1:]
 
-                    if r in keyWords:
-                        out.append(r)
-                        r = ''
-                #Last component expected to be operand
-                if r:
-                    out.append(r)
-                yield out
+            if read.strip():
+                read = read[read.find(',') + 1:] if ',' in read else read
+                yield read.split()
             else:
                 self._readOffset += 1
 
-    def __scan(self, line:str):
-        '''
-        Initial document scan function focused on building an address book for use during line interpretation and detecting keyword errors.
+        # for line in file:
+        #     read = line.strip().upper()
+        #     read = re.sub(r'[ \t]+','',read) #cleans line of spaces and tabs should they exist
+        #     read = read[:read.find('/')] if '/' in read else read
+        #     if read:
+        #         read = read.split(',')[1] if ',' in read else read
+                
+        #         #Read line left to right
+        #         out = []
+        #         r = ''
+        #         while read:
+        #             r += read[0]
+        #             read = read[1:]
 
-        Args:
-            line (str): Document line being scanned
-        
-        Raises:
-            MarieAssemblyError: if addressig or keyword errors exist
-        '''
-        ln = line
-
-        #Build address book and check for addressing errors
-        if ',' in ln:
-            tmp = ln.split(',')
-
-            # Raise error if line contains multiple address markers
-            if (len(tmp) > 2):
-                raise MarieAssemblyError(f'addressing error at line {self.__getOperatingLine()}')
-            if not tmp[0]:
-                raise MarieAssemblyError(f'missing address label at line {self.__getOperatingLine()}')
-            ad = tmp[0]
-            ln = tmp[1]
-            self.address_book[ad] = self._itr
-        
-        # Ensure every line contains a keyword
-        if not any(kw in line for kw in keyWords):
-            raise MarieAssemblyError(f'keyword missing exception at line {self.__getOperatingLine()}')
+        #             if r in keyWords:
+        #                 out.append(r)
+        #                 r = ''
+        #         #Last component expected to be operand
+        #         if r:
+        #             out.append(r)
+        #         yield out
+        #     else:
+        #         self._readOffset += 1
     
     def __interpret(self, components:list) -> int:
         '''
@@ -211,12 +211,8 @@ class Assembler:
         if file_path:
             with file_path.open('r') as file:
                 try:
-                    #Scan document for errors
-                    for line in self.__nonBlank(file):
-                        self.__scan(line)
-                        self._itr += 1
-                    
-                    print(self.address_book)
+                    #Scan document for errors and build address book
+                    self.__addressingScan(file)
                     
                     #Interpret document
                     file.seek(0)
