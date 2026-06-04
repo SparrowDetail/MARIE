@@ -10,6 +10,7 @@ from .memory import Memory
 import os
 
 class Marie():
+    """Marie class that simulates internal architecture of the Marie Simple Computer example"""
     def __init__(self, mem: Memory = Memory()):
         self.AC = 0x0
         self.MAR = 0x0
@@ -82,7 +83,7 @@ class Marie():
             else:
                 print(f'\t{o}')
     
-    def __printRegisterAction(self, register1:str, register2:str, value:str):
+    def __printRegisterAction(self, register1:str, register2:str, value:int, fourDigitRegister:bool = False):
         '''
         MARIE helper method used to print register actions in MARIE Register Transfer Language (RTL) format (MAR → PC (0x003)).
         This method will include the value being passed in parenthesis next to the the RTL text.
@@ -91,18 +92,29 @@ class Marie():
             register1 (str): First register in RTL format (value copied from).
             register2 (str): Second register in RTL format (value copied to).
             value (str): Register value being copied as a string
+            fourDigitRegister (bool): Optional boolean display modifier that displays the value as a four digit hex number, otherwise display as a three digit number
         
         Examples:
-            Print register action, MAR value transfered to PC:
+            Print register actions:
 
-            >>>_printRegisterAction("MAR", "PC", "0x003")
-            MAR → PC (0x003)
+            >>> Marie.__printRegisterAction("MAR", "PC", 3)
+                MAR ← PC (0x003)
+
+            >>> Marie.__printRegisterAction("MBR", "M[MAR]", 10, True)
+                MBR ← M[MAR] (0x000A)
         '''
-        print(f'\t{register1} \u2190 {register2} ({value})')
+        if (fourDigitRegister):
+            formatted_value = f'{value:04X}'
+        else:
+            formatted_value = f'{value:03X}'
+
+        print(f'\t{register1} \u2190 {register2} (0x{formatted_value})')
 
     def __fetch(self):
         '''
-        MARIE helper function that controls register actions for the MARIE fetch instruction.
+        MARIE helper function that controls register actions for the MARIE fetch instruction. 
+        
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
         '''
         self.MAR = self.PC
         self.MBR = self.memory.load(self.MAR)
@@ -110,14 +122,16 @@ class Marie():
         self.PC += 1
         if self.__debugText: 
             print('Fetch:')
-            self.__printRegisterAction('MAR','PC',f'{self.MAR}')
-            self.__printRegisterAction('MBR', 'M[MAR]', f'{self.MBR}')
-            self.__printRegisterAction('IR', 'MBR', f'{self.IR}')
-            self.__printRegisterAction('PC', 'PC + 1', f'{self.PC}')
+            self.__printRegisterAction('MAR','PC',self.MAR)
+            self.__printRegisterAction('MBR', 'M[MAR]', self.MBR, True)
+            self.__printRegisterAction('IR', 'MBR', self.IR)
+            self.__printRegisterAction('PC', 'PC + 1', self.PC)
     
     def __decode(self):
         '''
-        MARIE helper function that interprets the data stored within the Instruction Register (IR) based on MARIE instruction set.
+        Interprets the data stored within the Instruction Register (IR) based on MARIE instruction set.
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
 
         Raises:
             MarieExecutionError: If stored instruction is outside instruction set.
@@ -127,7 +141,7 @@ class Marie():
         action = self.__control.get(inst)
         if self.__debugText:
             print(f'Decode IR[15-12] (0x{inst:X}):')
-            self.__printRegisterAction('MAR','IR[15-12]',f'0x{self.MAR:03X}')
+            self.__printRegisterAction('MAR','IR[15-12]',self.MAR)
         if action:
             action()
         else:
@@ -135,7 +149,9 @@ class Marie():
     
     def __add(self):
         '''
-        MARIE helper function that simulates the add instruction (add value at MAR address to AC register).
+        Simulates the addition instruction (add value at MAR address to AC register).
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
 
         Raises:
             MarieExecutionError: If target memory block is out of range.
@@ -147,12 +163,14 @@ class Marie():
             raise MarieExecutionError('f{e}')
         if self.__debugText:
             print('ADD:')
-            self.__printRegisterAction('MBR','M[MAR]',f'0x{self.MBR:03X}')
-            self.__printRegisterAction('AC','AC + MBR',f'0x{self.AC:03X}')
+            self.__printRegisterAction('MBR','M[MAR]',self.MBR)
+            self.__printRegisterAction('AC','AC + MBR',self.AC)
 
     def __subt(self):
         '''
-        MARIE helper function that simulates the subt instruction (subtract value at MAR address from AC register).
+        Simulates the subtract instruction (subtract value at MAR address from AC register).
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
 
         Raises:
             MarieExecutionError: If target memory block is out of range.
@@ -164,15 +182,15 @@ class Marie():
             raise MarieExecutionError('f{e}')
         if self.__debugText:
             print('SUBT:')
-            self.__printRegisterAction('MBR','M[MAR]',f'0x{self.MBR:03X}')
-            self.__printRegisterAction('AC','AC - MBR',f'0x{self.AC:03X}')
+            self.__printRegisterAction('MBR','M[MAR]',self.MBR)
+            self.__printRegisterAction('AC','AC - MBR',self.AC)
 
     
     def __addi(self):
         '''
-        MARIE helper function that simulates the addi, or add indirect, instruction.
-        
-        Uses the address stored at the target address to retrieve a value and add that value to the AC register.
+        Simulates Marie the add indirect instruction. Uses the address stored at the target address to retrieve a value and add that value to the accumulator (AC) register.
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
 
         Raises:
             MarieExecutionError: If any address is out of range.
@@ -186,23 +204,30 @@ class Marie():
             raise MarieExecutionError('f{e}')
         if self.__debugText:
             print('ADDI:')
-            print(f'\tMBR \u2190 M[MAR] (0x{self.MAR:03X})')
-            print(f'\tMAR \u2190 MBR')
-            print(f'\tMBR \u2190 M[MAR] (0x{self.MBR:04X})')
-            print(f'\tAC \u2190 AC + MBR (0x{self.AC:03X})')
+            self.__printRegisterAction('MBR','M[MAR]',self.MAR,True)
+            self.__printRegisterAction('MAR','MBR',self.MAR)
+            self.__printRegisterAction('MBR','M[MAR]',self.MBR,True)
+            self.__printRegisterAction('AC','AC + MBR',self.AC)
     
     def __clear(self):
         '''
         Sets the AC register to a zeroed state.
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
         '''
         self.AC = 0x0
         if self.__debugText:
             print('CLEAR:')
-            print(f'\tAC \u2190 0x0')
+            self.__printRegisterAction('AC','0x0',self.AC)
     
     def __load(self):
         '''
-        Loads the value at a the 
+        Loads the value at a the address stored within the MAR register.
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
+
+        Raises:
+            MarieExecutionError: If the target address is outside the maximum address range (4096)
         '''
         try:
             self.AC = self.memory.load(self.MAR)
@@ -210,9 +235,17 @@ class Marie():
             raise MarieExecutionError('f{e}')
         if self.__debugText:
             print('LOAD:')
-            print(f'\tAC \u2190 M[MAR] ({self.AC:03X})')
+            self.__printRegisterAction('AC','M[MAR]',self.AC)
     
     def __store(self):
+        '''
+        Stores the value of the AC register to the memory address stored within the MAR register
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
+
+        Raises:
+            MarieExecutionError: If the passed address is outside the maximum address range (4096) or the stored value exceeds the maximum memory size (0xFFFF)
+        '''
         try:
             self.memory.store(self.AC , self.MAR)
         except Exception as e:
@@ -222,6 +255,12 @@ class Marie():
             print(f'\tM[MAR] \u2190 AC ({self.AC:03X})')
     
     def __input(self):
+        '''
+        Requests and validates user input for Marie input instruction. Validated input stored within Marie Input Register (InReg) and transferred to the 
+        Accumulator (AC).
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
+        '''
         print('User input requested:')
         self.InReg = 0x0
         while True:
@@ -241,19 +280,27 @@ class Marie():
         self.AC = self.InReg
         if self.__debugText:
             print('INPUT:')
-            print('\tInReg \u2190 Keyboard ')
-            print(f'\tAC \u2190 InReg ({self.InReg:03X})')
+            self.__printRegisterAction('InReg','Keyboard',self.InReg)
+            self.__printRegisterAction('AC','InReg',self.AC)
     
     def __output(self):
+        '''
+        Appends the current value of the accumulator to an internal output array for display at the end of program execution.
+
+        If debug text is set to true, will print Register Transfer Language steps to terminal.
+        '''
         self.OutReg = self.AC
         self.__outputs.append(self.OutReg)
         if self.__debugText:
             print('OUTPUT:')
-            print('\tOutReg \u2190 AC')
+            self.__printRegisterAction('OutReg','AC',self.AC)
             print(f'\tPush OutReg to outputs ({self.OutReg:03X})')
 
     
     def __jump(self):
+        '''
+        
+        '''
         self.PC = self.MAR
         if self.__debugText:
             print('JUMP:')
@@ -315,7 +362,7 @@ class Marie():
     def executeStepwise(self):
         self.__debugText = True
         self.__exit = False
-        self.PC = 0x0
+        self.__initialize()
         self.__clearTerm()
         try:
             while not self.__exit:
@@ -330,7 +377,7 @@ class Marie():
         
 class MarieExecutionError(Exception):
     '''
-    Marie execution error, triggered where errors arrise in program execution
+    Marie execution error, triggered where errors arise in program execution
     '''
-    def __init__(self, message = 'something whent wrong during program execution, check source program.'):
+    def __init__(self, message = 'something went wrong during program execution, check source program.'):
         super().__init__(f'Execution Error: {message}')
