@@ -3,11 +3,12 @@
 # Author: Steven Short
 # Professor: Abdulbast Abushgra
 # Date: 4/4/2025
-from .abstraction import MemoryABC
+# Revised: 2/26/2026
 
-class Memory(MemoryABC):
+class Memory():
     '''
-    Simulated memory with 4096 bytes of space (max storage value 0xFFFF).
+    Simulated memory with 4096 bytes of space (max storage value 0xFFFF). Controls memory actions independent of
+    simulated CPU.
     '''
     def __init__(self):
         '''Initializes memory array of size 4096'''
@@ -42,12 +43,7 @@ class Memory(MemoryABC):
             clm += 1
 
         return string
-    
-    # def __setattr__(self, key, value):
-    #     self.store(value, key)
-    
-    # def __getattribute__(self, key):
-    #     return self.load(key)
+
 
     def __checkAddressBounds(self, address:int):
         '''
