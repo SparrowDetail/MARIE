@@ -134,7 +134,9 @@ class Assembler:
         isInt, isHex = False, False
         opcode = 0x0
         operand = 0x0
+        jump_component_present = False
         for cmp in components:
+            #Detect and compile integer values if previous component was DEC or HEX keyword
             if isInt:
                 try:
                     if isHex:
@@ -145,13 +147,18 @@ class Assembler:
                     isInt = False
                 except:
                     raise MarieAssemblyError(f'integer expected at line {self.__getOperatingLine()}')
+            #Interprets keyword and address components
             else:
-                if cmp in keyWords:
+                if cmp in keyWords and not jump_component_present:
                     if cmp in ['HEX','DEC']:
                         isInt = True
                         if cmp == 'HEX':
                             isHex = True
                         continue
+                    
+                    #allows address names to match keywords
+                    jump_component_present = True if cmp == 'JUMP' else False
+
                     opcode = self.instruction_set[cmp]
                     continue
                 operand = self.address_book[cmp] if cmp in self.address_book else self.__checkSkipcond(cmp)
