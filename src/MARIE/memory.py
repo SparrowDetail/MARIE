@@ -9,6 +9,17 @@ class Memory():
     '''
     Simulated memory with 4096 bytes of space (max storage value 0xFFFF). Controls memory actions independent of
     simulated CPU.
+
+    Attributes:
+        memory (list(int)): List of integers initialized with 4096 zero values to represent an empty address map
+    
+    Methods:
+        is_empty(): Returns true if all values are set to zero
+        clear_memory(): Reset memory to the zeroed state
+        store(value, address): Stores an integer value at a target address in memory if valid
+        load(address): Returns the integer value stored at a target address
+        save_to_file(fileName, fileDir): Saves the current memory state with a given name to a given directory
+        load_from_file(fileName, fileDir): Loads a file of a given name from a given directory
     '''
     def __init__(self):
         '''Initializes memory array of size 4096'''
@@ -43,9 +54,21 @@ class Memory():
             clm += 1
 
         return string
+    
+    def is_empty(self) -> bool:
+        '''
+        Returns True if the memory object is empty (i.e. set to initial value).
+        '''
+        return self.memory == [0x0] * 4096
+
+    def clear_memory(self):
+        '''
+        Resets memory to initial empty state.
+        '''
+        self.memory = [0x0] * 4096
 
 
-    def __checkAddressBounds(self, address:int):
+    def __check_address_bounds(self, address:int):
         '''
         Utility method used to verify address bounds
 
@@ -66,7 +89,7 @@ class Memory():
         Raises:
             MemoryError: if passed address is outside memory range (4096) or if passed value exceeds maximum storage size (0xFFFF)
         '''
-        self.__checkAddressBounds(address)
+        self.__check_address_bounds(address)
         if value <= 0xFFFF:
             self.memory[address] = value
         else:
@@ -86,10 +109,10 @@ class Memory():
         Raises:
             MemoryError: if passed address is outside memory range (4096)
         '''
-        self.__checkAddressBounds(address)
+        self.__check_address_bounds(address)
         return self.memory[address]
     
-    def saveToFile(self, fileName: str, fileDir: str = './'):
+    def save_to_file(self, fileName: str, fileDir: str = './'):
         '''
         Saves data stored within the memory as a '.mre' file.
 
@@ -109,7 +132,7 @@ class Memory():
         with open(f'{fileDir}{fileName}.mre', 'w') as file:
             file.write(string)
     
-    def loadFromFile(self, fileName: str, fileDir: str = './'):
+    def load_from_file(self, fileName: str, fileDir: str = './'):
         '''
         Loads data into the memory from a '.mre' file.
 
